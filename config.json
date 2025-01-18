@@ -1,0 +1,28 @@
+{
+    "email": {
+        "domain": "xxxx.xxxx",
+        "mail_domain": "xxxx.xxxx",
+        "prefix_enabled": true,
+        "prefix_length": 8,
+        "custom_prefix": "cursor",
+        "api": {
+            "base_url": "https://xxxx.xxxx",
+            "admin_password": "xxxxxxxx",
+            "web_url": "https://xxxx.xxxx"
+        }
+    },
+    "browser": {
+        "default": "edge",
+        "incognito": true,
+        "headless": false
+    },
+    "account": {
+        "first_name": "qin",
+        "last_name": "ye",
+        "password_length": 12
+    },
+	"cursor": {
+        "auto_start": true,
+        "path": "C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\cursor\\Cursor.exe"
+    }
+} 

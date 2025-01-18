@@ -1,0 +1,6 @@
+colorama==0.4.6
+DrissionPage==4.1.0.17
+psutil==5.9.8
+requests==2.31.0
+pyinstaller==6.3.0
+pywin32==306; sys_platform == 'win32'

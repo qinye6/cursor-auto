@@ -1,0 +1,28 @@
+{
+    "email": {
+        "domain": "xxxx.xxxx",          // 邮箱域名，用于生成邮箱地址的后缀，如 xxx@qinye.asia
+        "mail_domain": "xxxx.xxxx", // 临时邮箱服务的域名，用于显示邮箱服务商
+        "prefix_enabled": true,           // 是否启用随机前缀
+        "prefix_length": 8,              // 随机前缀的长度（当prefix_enabled为true且无custom_prefix时使用）
+        "custom_prefix": "cursor",             // 自定义固定前缀，如设置为"cursor"则生成cursor123456@qinye.asia
+        "api": {
+            "base_url": "https://xxxx.xxxx",  // 临时邮箱后端API地址
+            "admin_password": "xxxxxxxx",                   // 管理员密码，用于API认证
+            "web_url": "https://xxxx.xxxx"           // 临时邮箱Web界面地址
+        }
+    },
+    "browser": {
+        "default": "chrome",             // 默认浏览器选择（chrome/edge/brave）
+        "incognito": true,              // 是否使用无痕模式
+        "headless": true                // 是否使用无头模式（不显示浏览器窗口）
+    },
+    "account": {
+        "first_name": "qin",            // 注册时使用的名字
+        "last_name": "ye",              // 注册时使用的姓氏
+        "password_length": 12           // 生成随机密码的长度
+    },
+    "cursor": {
+        "auto_start": true,              // 是否在操作完成后自动启动 Cursor
+        "path": "C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\cursor\\Cursor.exe"  // Cursor 的安装路径
+    }
+} 
