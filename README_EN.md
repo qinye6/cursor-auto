@@ -236,6 +236,16 @@ chore: Build related
 4. Push to branch
 5. Create Pull Request
 
+## 🙏 Acknowledgments
+
+This project was inspired by and references the following excellent open source projects:
+
+- [cursor-auto-free](https://github.com/chengazhen/cursor-auto-free) - Provided the basic automation framework and email verification logic
+- [gpt-cursor-auto](https://github.com/hmhm2022/gpt-cursor-auto) - Provided insights into ChatGPT Access Token acquisition
+- [cursor-auto-free](https://github.com/yeongpin/cursor-auto-free) - Provided additional feature references
+
+Thanks to the developers of these projects for their contributions to the open source community!
+
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).

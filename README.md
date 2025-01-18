@@ -236,6 +236,16 @@ chore: 构建相关
 4. 推送到分支
 5. 创建 Pull Request
 
+## 🙏 致谢
+
+本项目参考了以下优秀的开源项目：
+
+- [cursor-auto-free](https://github.com/chengazhen/cursor-auto-free) - 提供了基础的自动化框架和邮箱验证逻辑
+- [gpt-cursor-auto](https://github.com/hmhm2022/gpt-cursor-auto) - 提供了 ChatGPT Access Token 获取的思路
+- [cursor-auto-free](https://github.com/yeongpin/cursor-auto-free) - 提供了额外的功能特性参考
+
+感谢这些项目的开发者为开源社区做出的贡献！
+
 ## 📄 许可证
 
 本项目采用 [MIT 许可证](LICENSE)。
