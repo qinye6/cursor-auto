@@ -7,9 +7,15 @@ import threading
 import sys
 import shutil
 from datetime import datetime
+from pathlib import Path
+from colorama import init, Fore, Style
+from version import VERSION
 
 # Ignore specific SyntaxWarning
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="DrissionPage")
+
+# 初始化colorama
+init()
 
 CURSOR_LOGO = """
    ██████╗██╗   ██╗██████╗ ███████╗ ██████╗ ██████╗     
@@ -156,6 +162,259 @@ def get_platform_config():
     return configs.get(system)
 
 
+class Builder:
+    def __init__(self):
+        self.version = VERSION
+        self.project_root = Path(__file__).parent
+        self.dist_dir = self.project_root / "dist"
+        self.build_dir = self.project_root / "build"
+        
+        # 设置输出文件名
+        self.output_names = {
+            "windows": "cursor-auto-windows-x64.exe",
+            "linux": "cursor-auto-linux-x64",
+            "darwin": "cursor-auto-darwin-x64"
+        }
+        
+        # 设置图标路径
+        self.icons = {
+            "windows": "assets/icon.ico",
+            "linux": "assets/icon.png",
+            "darwin": "assets/icon.icns"
+        }
+
+    def create_spec(self, platform):
+        """创建 .spec 文件"""
+        output_name = f"cursor-auto-{platform}-x64-v{self.version}"
+        icon_path = self.icons.get(platform)
+        
+        # 检查图标文件是否存在
+        if icon_path and os.path.exists(icon_path):
+            icon_config = f"icon=['{icon_path}']"
+        else:
+            icon_config = "icon=None"
+        
+        # 基础配置
+        base_config = f"""# -*- mode: python ; coding: utf-8 -*-
+
+a = Analysis(
+    ['cursor_pro_keep_alive.py'],
+    pathex=[],
+    binaries=[],
+    datas=[],
+    hiddenimports=[],
+    hookspath=[],
+    hooksconfig={{}},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure)
+"""
+
+        # 平台特定的配置
+        if platform == "windows":
+            platform_config = f"""
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='{output_name}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    {icon_config}
+)"""
+        elif platform == "linux":
+            platform_config = f"""
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='{output_name}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    {icon_config}
+)"""
+        else:  # darwin
+            platform_config = f"""
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='{output_name}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=True,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    {icon_config}
+)
+
+app = BUNDLE(
+    exe,
+    name='{output_name}.app',
+    {icon_config},
+    bundle_identifier=None,
+)"""
+
+        # 创建 spec 文件
+        spec_file = self.project_root / f"cursor_auto_{platform}.spec"
+        with open(spec_file, "w", encoding="utf-8") as f:
+            f.write(base_config + platform_config)
+        
+        return spec_file
+
+    def build(self, platform):
+        """构建指定平台的可执行文件"""
+        try:
+            print(f"\n{Fore.CYAN}[*] 开始构建 {platform.capitalize()} 版本...{Style.RESET_ALL}")
+            
+            # 创建 spec 文件
+            spec_file = self.create_spec(platform)
+            print(f"{Fore.CYAN}[*] 已创建 spec 文件: {spec_file}{Style.RESET_ALL}")
+            
+            # 构建命令
+            cmd = [
+                "pyinstaller",
+                "--clean",
+                "--noconfirm",
+                str(spec_file)
+            ]
+            
+            # 执行构建
+            print(f"{Fore.CYAN}[*] 执行命令: {' '.join(cmd)}{Style.RESET_ALL}")
+            process = subprocess.run(cmd, capture_output=True, text=True)
+            
+            # 输出构建日志
+            if process.stdout:
+                print(f"[OUT] {process.stdout}")
+            if process.stderr:
+                print(f"[ERR] {process.stderr}")
+            
+            # 检查构建结果
+            if process.returncode == 0:
+                print(f"{Fore.GREEN}[+] {platform.capitalize()} 版本构建成功{Style.RESET_ALL}")
+                
+                try:
+                    # 创建 releases 目录
+                    releases_dir = self.project_root / "releases"
+                    releases_dir.mkdir(exist_ok=True)
+                    
+                    # 根据平台处理文件
+                    if platform == "windows":
+                        src_file = self.dist_dir / "cursor-auto-windows-x64.exe"
+                        dst_file = releases_dir / "cursor-auto-windows-x64.exe"
+                    elif platform == "linux":
+                        src_file = self.dist_dir / "cursor-auto-linux-x64.exe"
+                        dst_file = releases_dir / "cursor-auto-linux-x64"
+                    else:  # darwin
+                        src_file = self.dist_dir / "cursor-auto-darwin-x64.exe"
+                        dst_file = releases_dir / "cursor-auto-darwin-x64"
+                    
+                    # 复制文件
+                    if src_file.exists():
+                        shutil.copy2(src_file, dst_file)
+                        print(f"{Fore.GREEN}[+] 文件已复制到: {dst_file}{Style.RESET_ALL}")
+                        
+                        # 设置可执行权限（对于 Linux 和 macOS）
+                        if platform in ["linux", "darwin"]:
+                            os.chmod(dst_file, 0o755)  # rwxr-xr-x
+                            print(f"{Fore.GREEN}[+] 已设置可执行权限{Style.RESET_ALL}")
+                        
+                        # 处理 macOS 的 .app 包
+                        if platform == "darwin":
+                            app_src = self.dist_dir / "cursor-auto-darwin-x64.app"
+                            if app_src.exists():
+                                app_dst = releases_dir / "cursor-auto-darwin-x64.app"
+                                if app_dst.exists():
+                                    shutil.rmtree(app_dst)
+                                shutil.copytree(app_src, app_dst)
+                                print(f"{Fore.GREEN}[+] macOS App包已复制到: {app_dst}{Style.RESET_ALL}")
+                        
+                        return True
+                    else:
+                        print(f"{Fore.RED}[-] 找不到源文件: {src_file}{Style.RESET_ALL}")
+                        return False
+                        
+                except Exception as e:
+                    print(f"{Fore.RED}[-] 处理文件时出错: {str(e)}{Style.RESET_ALL}")
+                    return False
+            else:
+                print(f"{Fore.RED}[-] {platform.capitalize()} 版本构建失败{Style.RESET_ALL}")
+                return False
+                
+        except Exception as e:
+            print(f"{Fore.RED}[-] 构建过程出错: {str(e)}{Style.RESET_ALL}")
+            return False
+
+    def build_all(self):
+        """构建所有平台版本"""
+        self.clean()
+        
+        results = {}
+        for platform in ["windows", "darwin", "linux"]:
+            results[platform] = self.build(platform)
+        
+        # 打印构建结果摘要
+        print("\n构建结果摘要:")
+        for platform_name, success in results.items():
+            status = "成功" if success else "失败"
+            color = Fore.GREEN if success else Fore.RED
+            print(f"- {platform_name.capitalize()}: {color}{status}{Style.RESET_ALL}")
+
+    def clean(self):
+        """清理构建和分发目录"""
+        print(f"{Fore.CYAN}[*] 清理旧的构建文件...{Style.RESET_ALL}")
+        paths_to_clean = [
+            self.dist_dir,
+            self.build_dir,
+            self.project_root / "releases"
+        ]
+        for path in paths_to_clean:
+            if path.exists():
+                try:
+                    shutil.rmtree(path)
+                except Exception as e:
+                    print(f"{Fore.YELLOW}[!] 清理 {path} 时出错: {str(e)}{Style.RESET_ALL}")
+
+
 def build():
     # 设置日志
     log_file = setup_logging()
@@ -224,4 +483,14 @@ def build():
 
 
 if __name__ == "__main__":
-    build()
+    builder = Builder()
+    if len(sys.argv) > 1:
+        # 构建指定平台
+        platform = sys.argv[1].lower()
+        if platform in ["windows", "darwin", "linux"]:
+            builder.build(platform)
+        else:
+            print(f"{Fore.RED}[-] 不支持的平台: {platform}{Style.RESET_ALL}")
+    else:
+        # 构建所有平台
+        builder.build_all()

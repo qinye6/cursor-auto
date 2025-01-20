@@ -1,0 +1,139 @@
+name: Build Cursor Auto
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'  # 推送标签时触发
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            artifact_name: cursor-auto-linux-x64
+          - os: windows-latest
+            platform: windows
+            artifact_name: cursor-auto-windows-x64.exe
+          - os: macos-latest
+            platform: darwin
+            artifact_name: cursor-auto-darwin-x64
+            
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: Get Version
+      id: get_version
+      run: |
+        VERSION=$(python -c "from version import VERSION; print(VERSION)")
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+      shell: bash
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Install Linux dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libxcb-xinerama0 \
+          libxkbcommon-x11-0 \
+          libxcb-icccm4 \
+          libxcb-image0 \
+          libxcb-keysyms1 \
+          libxcb-randr0 \
+          libxcb-render-util0 \
+          libxcb-xfixes0
+          
+    - name: Build
+      run: python build.py ${{ matrix.platform }}
+      
+    - name: Create Release Directory
+      run: mkdir -p release
+      
+    - name: Copy Release Files (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        cp dist/${{ matrix.artifact_name }} release/
+        
+    - name: Copy Release Files (Linux/macOS)
+      if: matrix.os != 'windows-latest'
+      run: |
+        cp dist/${{ matrix.artifact_name }} release/
+        chmod +x release/${{ matrix.artifact_name }}
+        
+    - name: Create run.sh for Linux
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        cat > release/run.sh << 'EOL'
+        #!/bin/bash
+        # 检查依赖
+        check_dependency() {
+            if ! command -v $1 &> /dev/null; then
+                echo "错误: 缺少依赖 $1"
+                echo "请运行: sudo apt-get install $1"
+                return 1
+            fi
+            return 0
+        }
+        
+        # 检查必要的依赖
+        DEPS=("libxcb-xinerama0" "libxkbcommon-x11-0" "libxcb-icccm4" "libxcb-image0" "libxcb-keysyms1" "libxcb-randr0" "libxcb-render-util0" "libxcb-xfixes0")
+        
+        for dep in "${DEPS[@]}"; do
+            if ! check_dependency $dep; then
+                exit 1
+            fi
+        done
+        
+        # 设置可执行权限
+        chmod +x "$(dirname "$0")/cursor-auto-linux-x64"
+        
+        # 运行程序
+        "$(dirname "$0")/cursor-auto-linux-x64" "$@"
+        EOL
+        chmod +x release/run.sh
+        
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: cursor-auto-${{ matrix.platform }}-v${{ steps.get_version.outputs.version }}
+        path: release/*
+        
+    - name: Create Release
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        tag_name: v${{ steps.get_version.outputs.version }}
+        name: Release v${{ steps.get_version.outputs.version }}
+        draft: false
+        prerelease: false
+        body: |
+          Cursor Auto v${{ steps.get_version.outputs.version }}
+          
+          ### 更新内容
+          - 请在此处添加更新说明
+          
+          ### 下载
+          - Windows: cursor-auto-windows-x64.exe
+          - Linux: cursor-auto-linux-x64 (需要运行 run.sh)
+          - macOS: cursor-auto-darwin-x64
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

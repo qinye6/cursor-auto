@@ -51,6 +51,7 @@ from get_email_code import EmailVerificationHandler
 from logo import print_logo
 from reset_machine import MachineIDResetter
 import psutil
+from auto_updater import AutoUpdater
 
 # 在文件开头设置日志
 class ColoredFormatter(logging.Formatter):
@@ -502,6 +503,11 @@ def print_status(message, status='info'):
 @log_function_call
 def main():
     print_logo()
+    
+    # 检查更新
+    updater = AutoUpdater()
+    updater.check_and_update()
+    
     browser_manager = None
     try:
         # 加载配置

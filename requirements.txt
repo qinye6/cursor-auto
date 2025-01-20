@@ -4,3 +4,4 @@ psutil==5.9.8
 requests==2.31.0
 pyinstaller==6.3.0
 pywin32==306; sys_platform == 'win32'
+packaging==23.2
