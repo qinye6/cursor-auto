@@ -56,3 +56,8 @@ site/
 # Local development
 local_settings.py
 db.sqlite3
+
+# Configuration files
+config.json
+config.*.json
+!config.example.json

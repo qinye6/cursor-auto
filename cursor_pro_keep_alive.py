@@ -45,7 +45,7 @@ import time
 import random
 from cursor_auth_manager import CursorAuthManager
 import os
-from logger import logging
+from logger import logging, logger, log_function_call
 from browser_utils import BrowserManager
 from get_email_code import EmailVerificationHandler
 from logo import print_logo
@@ -63,21 +63,13 @@ class ColoredFormatter(logging.Formatter):
             record.msg = f"{Fore.RED}{EMOJI['ERROR']} {record.msg}{Style.RESET_ALL}"
         return super().format(record)
 
-# 修改日志配置
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("cursor_keep_alive.log", encoding="utf-8"),
-    ],
-)
-
 # 为控制台处理器设置彩色格式器
 for handler in logging.getLogger().handlers:
     if isinstance(handler, logging.StreamHandler):
         handler.setFormatter(ColoredFormatter("%(asctime)s - %(levelname)s - %(message)s"))
 
+# 在程序开始时记录启动信息
+logger.info("Cursor Pro 程序已启动")
 
 def show_progress(progress, total, prefix='Progress:', suffix='Complete', length=50):
     """显示进度条"""
@@ -250,17 +242,34 @@ def update_cursor_auth(email=None, access_token=None, refresh_token=None):
 
 
 def sign_up_account(browser, tab):
+    # 添加 URL 常量
+    sign_up_url = "https://authenticator.cursor.sh/sign-up"
+    settings_url = "https://www.cursor.com/settings"
+    
     # 获取配置的邮箱域名
     config = Config()
     domain = config.get('email.domain')          # 实际邮箱域名
     mail_domain = config.get('email.mail_domain')  # 邮箱服务商域名
     
+    # 初始化邮箱验证处理器
+    email_handler = EmailVerificationHandler()
+    
+    # 生成账号信息
+    email_generator = EmailGenerator()
+    account_info = email_generator.get_account_info()
+    
+    # 从 account_info 中获取账号信息
+    account = account_info['email']
+    password = account_info['password']
+    first_name = account_info['first_name']
+    last_name = account_info['last_name']
+    
     print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{EMOJI['START']} 开始 Cursor Pro 注册流程{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
     print(f"{Fore.YELLOW}[信息]{Style.RESET_ALL}")
-    print(f"{EMOJI['FORM']} 邮箱服务商: {Fore.GREEN}{mail_domain}{Style.RESET_ALL}")  # 显示服务商域名
-    print(f"{EMOJI['FORM']} 临时邮箱地址: {Fore.GREEN}{account}{Style.RESET_ALL}")    # account 已经使用正确的域名
+    print(f"{EMOJI['FORM']} 邮箱服务商: {Fore.GREEN}{mail_domain}{Style.RESET_ALL}")
+    print(f"{EMOJI['FORM']} 临时邮箱地址: {Fore.GREEN}{account}{Style.RESET_ALL}")
     print(f"{EMOJI['FORM']} 注册名称: {Fore.GREEN}{first_name} {last_name}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n")
     
@@ -459,19 +468,21 @@ def print_status(message, status='info'):
     print(f"{color}{emoji} {message}{Style.RESET_ALL}")
 
 
-if __name__ == "__main__":
+@log_function_call
+def main():
     print_logo()
     browser_manager = None
     try:
-        ExitCursor()
-        
         # 加载配置
         config = Config()
         
-        # 如果需要，运行配置向导
-        if not os.path.exists('config.json'):
-            print(f"{Fore.YELLOW}首次运行，请进行配置...{Style.RESET_ALL}")
-            config.setup_wizard()
+        # 获取 Cursor 路径
+        cursor_path = config.get('cursor.path')
+        auto_start = config.get('cursor.auto_start', True)
+        
+        # 先退出已运行的 Cursor
+        ExitCursor()
+        time.sleep(2)  # 添加延时，确保完全退出
         
         # 初始化浏览器
         browser_manager = BrowserManager()
@@ -502,32 +513,55 @@ if __name__ == "__main__":
 
         tab.get(login_url)
 
-        if sign_up_account(browser, tab):
-            token = get_cursor_session_token(tab)
-            if token:
-                update_cursor_auth(
-                    email=account, access_token=token, refresh_token=token
-                )           
-                # 在认证更新成功后重置机器ID
-                print(f"\n{Fore.CYAN}{EMOJI['WAIT']} 开始重置机器标识...{Style.RESET_ALL}")
-                resetter = MachineIDResetter()
-                if resetter.reset_machine_ids():
-                    print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 机器标识重置完成{Style.RESET_ALL}")
-                    # 添加启动 Cursor 的调用
-                    StartCursor()
+        # 在重要操作前后添加日志
+        logger.debug("开始执行主要操作...")
+        try:
+            if sign_up_account(browser, tab):
+                token = get_cursor_session_token(tab)
+                if token:
+                    update_cursor_auth(
+                        email=account, access_token=token, refresh_token=token
+                    )           
+                    # 在认证更新成功后重置机器ID
+                    print(f"\n{Fore.CYAN}{EMOJI['WAIT']} 开始重置机器标识...{Style.RESET_ALL}")
+                    resetter = MachineIDResetter()
+                    if resetter.reset_machine_ids():
+                        logger.info("机器标识重置成功")
+                        
+                        # 检查是否需要自动启动 Cursor
+                        if auto_start:
+                            if cursor_path and os.path.exists(cursor_path):
+                                logger.info(f"正在启动 Cursor: {cursor_path}")
+                                StartCursor(cursor_path)
+                            else:
+                                logger.warning("Cursor 路径未配置或不存在，但将尝试使用默认路径启动")
+                                # 尝试使用默认路径
+                                if os.name == "nt":  # Windows
+                                    default_path = os.path.join(os.getenv("LOCALAPPDATA"), "Programs", "Cursor", "Cursor.exe")
+                                else:  # macOS
+                                    default_path = "/Applications/Cursor.app"
+                                
+                                if os.path.exists(default_path):
+                                    logger.info(f"使用默认路径启动 Cursor: {default_path}")
+                                    StartCursor(default_path)
+                                else:
+                                    logger.error("无法找到 Cursor 可执行文件")
                 else:
-                    print(f"{Fore.RED}{EMOJI['ERROR']} 机器标识重置失败{Style.RESET_ALL}")
-            else:
-                print(f"{Fore.RED}{EMOJI['ERROR']} 账户注册失败{Style.RESET_ALL}")
+                    logger.error("账户注册失败")
 
-        print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 所有操作执行完毕{Style.RESET_ALL}")
+            logger.info("所有操作已完成")
+        except Exception as e:
+            logger.error(f"操作执行失败: {str(e)}", exc_info=True)
 
     except Exception as e:
-        logging.error(f"程序执行出错: {str(e)}")
+        logger.error(f"程序执行出错: {str(e)}")
         import traceback
-
-        logging.error(traceback.format_exc())
+        logger.error(traceback.format_exc())
     finally:
         if browser_manager:
             browser_manager.quit()
         input(f"\n{Fore.CYAN}{EMOJI['WAIT']} 按回车键退出...{Style.RESET_ALL}")
+
+
+if __name__ == "__main__":
+    main()

@@ -95,7 +95,7 @@ class MachineIDResetter:
             if config.get('cursor.auto_start', True):
                 cursor_path = config.get('cursor.path', '')
                 if not cursor_path or not os.path.exists(cursor_path):
-                    print(f"{Fore.YELLOW}{EMOJI['INFO']} Cursor 路径未配置或不存在，跳过自动启动{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}{EMOJI['INFO']} Cursor 路径未配置或不存在！！！{Style.RESET_ALL}")
                 else:
                     print(f"\n{Fore.CYAN}{EMOJI['ROCKET']} 正在启动 Cursor...{Style.RESET_ALL}")
                     try:
