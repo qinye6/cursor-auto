@@ -13,9 +13,9 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-22.04, windows-latest, macos-latest]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             platform: linux
           - os: windows-latest
             platform: windows
@@ -45,7 +45,7 @@ jobs:
         pip install -r requirements.txt
         
     - name: Install Linux dependencies
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-22.04'
       run: |
         sudo apt-get update
         sudo apt-get install -y \
@@ -69,17 +69,29 @@ jobs:
       
     - name: Copy Release Files (Windows)
       if: matrix.os == 'windows-latest'
+      shell: bash  # 使用 bash 确保跨平台一致性
       run: |
-        cp dist/cursor-auto-windows-x64-v${{ steps.get_version.outputs.version }}.exe release/
+        mkdir -p release
+        cp "dist/cursor-auto-windows-x64-v${{ steps.get_version.outputs.version }}.exe" release/ || echo "Failed to copy Windows exe"
+        ls -la dist/
+        ls -la release/
         
     - name: Copy Release Files (Linux/macOS)
       if: matrix.os != 'windows-latest'
+      shell: bash
       run: |
-        cp dist/cursor-auto-${{ matrix.platform }}-x64-v${{ steps.get_version.outputs.version }} release/
-        chmod +x release/cursor-auto-${{ matrix.platform }}-x64-v${{ steps.get_version.outputs.version }}
+        mkdir -p release
+        if [ "${{ matrix.platform }}" = "darwin" ]; then
+          cp "dist/cursor-auto-darwin-x64-v${{ steps.get_version.outputs.version }}" release/ || echo "Failed to copy macOS binary"
+        else
+          cp "dist/cursor-auto-linux-x64-v${{ steps.get_version.outputs.version }}" release/ || echo "Failed to copy Linux binary"
+        fi
+        chmod +x release/*
+        ls -la dist/
+        ls -la release/
         
     - name: Create run.sh for Linux
-      if: matrix.os == 'ubuntu-latest'
+      if: matrix.os == 'ubuntu-22.04'
       run: |
         cat > release/run.sh << 'EOL'
         #!/bin/bash
@@ -114,7 +126,8 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: cursor-auto-${{ matrix.platform }}-v${{ steps.get_version.outputs.version }}
-        path: release/*
+        path: |
+          release/*
         if-no-files-found: error
         retention-days: 5
 
@@ -128,6 +141,7 @@ jobs:
         draft: false
         prerelease: false
         fail_on_unmatched_files: false
+        generate_release_notes: true
         body: |
           Cursor Auto v${{ steps.get_version.outputs.version }}
           
@@ -135,9 +149,14 @@ jobs:
           - 自动构建发布版本
           
           ### 下载
-          - Windows: cursor-auto-windows-x64-v${{ steps.get_version.outputs.version }}.exe
-          - Linux: cursor-auto-linux-x64-v${{ steps.get_version.outputs.version }}
-          - macOS: cursor-auto-darwin-x64-v${{ steps.get_version.outputs.version }}
+          - Windows: [cursor-auto-windows-x64-v${{ steps.get_version.outputs.version }}.exe](cursor-auto-windows-x64-v${{ steps.get_version.outputs.version }}.exe)
+          - Linux: [cursor-auto-linux-x64-v${{ steps.get_version.outputs.version }}](cursor-auto-linux-x64-v${{ steps.get_version.outputs.version }})
+          - macOS: [cursor-auto-darwin-x64-v${{ steps.get_version.outputs.version }}](cursor-auto-darwin-x64-v${{ steps.get_version.outputs.version }})
+          
+          ### 使用说明
+          - Windows: 直接运行 exe 文件
+          - Linux: 使用 `./run.sh` 运行
+          - macOS: 直接运行二进制文件或使用 `chmod +x` 赋予执行权限后运行
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
