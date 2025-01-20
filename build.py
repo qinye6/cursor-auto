@@ -14,6 +14,10 @@ from version import VERSION
 # Ignore specific SyntaxWarning
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="DrissionPage")
 
+# 设置控制台编码为 UTF-8
+if sys.platform.startswith('win'):
+    os.system('chcp 65001')
+
 # 初始化colorama
 init()
 
@@ -183,6 +187,27 @@ class Builder:
             "darwin": "assets/icon.icns"
         }
 
+    def print_message(self, message, type='info'):
+        """打印带颜色的消息"""
+        colors = {
+            'info': Fore.CYAN,
+            'success': Fore.GREEN,
+            'error': Fore.RED,
+            'warning': Fore.YELLOW
+        }
+        prefix = {
+            'info': '[*]',
+            'success': '[+]',
+            'error': '[-]',
+            'warning': '[!]'
+        }
+        color = colors.get(type, Fore.WHITE)
+        try:
+            print(f"{color}{prefix[type]} {message}{Style.RESET_ALL}")
+        except UnicodeEncodeError:
+            # 如果出现编码错误，尝试使用 ASCII 字符
+            print(f"{color}{prefix[type]} {message.encode('ascii', 'replace').decode()}{Style.RESET_ALL}")
+
     def create_spec(self, platform):
         """创建 .spec 文件"""
         output_name = self.output_names[platform]
@@ -294,14 +319,40 @@ exe = EXE(
         
         return spec_file
 
+    def verify_build(self, file_path):
+        """验证构建文件"""
+        if not file_path.exists():
+            self.print_message(f"Build file not found: {file_path}", 'error')
+            return False
+        
+        size = file_path.stat().st_size
+        min_size = 1024 * 1024  # 1MB
+        max_size = 1024 * 1024 * 1024  # 1GB
+        
+        if size < min_size:
+            self.print_message(f"Build file too small: {size} bytes", 'error')
+            return False
+        if size > max_size:
+            self.print_message(f"Build file too large: {size} bytes", 'warning')
+        
+        return True
+
     def build(self, platform):
         """构建指定平台的可执行文件"""
         try:
-            print(f"\n{Fore.CYAN}[*] 开始构建 {platform.capitalize()} 版本...{Style.RESET_ALL}")
+            self.print_message(f"Starting build for {platform.capitalize()}", 'info')
+            
+            # 创建必要的目录
+            release_dir = self.project_root / "release"
+            release_dir.mkdir(exist_ok=True)
+            
+            # 清理旧文件
+            for old_file in release_dir.glob(f"cursor-auto-{platform}*"):
+                old_file.unlink()
             
             # 创建 spec 文件
             spec_file = self.create_spec(platform)
-            print(f"{Fore.CYAN}[*] 已创建 spec 文件: {spec_file}{Style.RESET_ALL}")
+            self.print_message(f"Created spec file: {spec_file}", 'info')
             
             # 构建命令
             cmd = [
@@ -312,7 +363,7 @@ exe = EXE(
             ]
             
             # 执行构建
-            print(f"{Fore.CYAN}[*] 执行命令: {' '.join(cmd)}{Style.RESET_ALL}")
+            self.print_message(f"Executing command: {' '.join(cmd)}", 'info')
             process = subprocess.run(cmd, capture_output=True, text=True)
             
             # 输出构建日志
@@ -323,34 +374,22 @@ exe = EXE(
                 
             # 检查构建结果
             if process.returncode == 0:
-                print(f"{Fore.GREEN}[+] {platform.capitalize()} 版本构建成功{Style.RESET_ALL}")
-                
-                # 创建 release 目录
-                release_dir = self.project_root / "release"
-                release_dir.mkdir(exist_ok=True)
-                
-                # 复制构建文件到 release 目录
                 src_file = self.dist_dir / self.output_names[platform]
-                dst_file = release_dir / self.output_names[platform]
-                
-                if src_file.exists():
+                if self.verify_build(src_file):
+                    dst_file = release_dir / self.output_names[platform]
                     shutil.copy2(src_file, dst_file)
                     
-                    # 设置可执行权限（Linux/macOS）
                     if platform in ["linux", "darwin"]:
                         os.chmod(dst_file, 0o755)
                     
-                    print(f"{Fore.GREEN}[+] 文件已复制到: {dst_file}{Style.RESET_ALL}")
+                    self.print_message(f"Build successful: {dst_file} ({dst_file.stat().st_size} bytes)", 'success')
                     return True
-                else:
-                    print(f"{Fore.RED}[-] 找不到源文件: {src_file}{Style.RESET_ALL}")
-                    return False
             else:
-                print(f"{Fore.RED}[-] {platform.capitalize()} 版本构建失败{Style.RESET_ALL}")
-                return False
+                self.print_message(f"Build failed for {platform.capitalize()}", 'error')
+            return False
                 
         except Exception as e:
-            print(f"{Fore.RED}[-] 构建过程出错: {str(e)}{Style.RESET_ALL}")
+            self.print_message(f"Build process error: {str(e)}", 'error')
             return False
 
     def build_all(self):
@@ -362,15 +401,15 @@ exe = EXE(
             results[platform] = self.build(platform)
         
         # 打印构建结果摘要
-        print("\n构建结果摘要:")
+        print("\nBuild Summary:")
         for platform_name, success in results.items():
-            status = "成功" if success else "失败"
+            status = "Success" if success else "Failed"
             color = Fore.GREEN if success else Fore.RED
             print(f"- {platform_name.capitalize()}: {color}{status}{Style.RESET_ALL}")
 
     def clean(self):
         """清理构建和分发目录"""
-        print(f"{Fore.CYAN}[*] 清理旧的构建文件...{Style.RESET_ALL}")
+        self.print_message("Cleaning old build files", 'info')
         paths_to_clean = [
             self.dist_dir,
             self.build_dir,
@@ -381,7 +420,7 @@ exe = EXE(
                 try:
                     shutil.rmtree(path)
                 except Exception as e:
-                    print(f"{Fore.YELLOW}[!] 清理 {path} 时出错: {str(e)}{Style.RESET_ALL}")
+                    self.print_message(f"Error cleaning {path}: {str(e)}", 'warning')
 
 
 def build():
@@ -459,7 +498,7 @@ if __name__ == "__main__":
         if platform in ["windows", "darwin", "linux"]:
             builder.build(platform)
         else:
-            print(f"{Fore.RED}[-] 不支持的平台: {platform}{Style.RESET_ALL}")
+            builder.print_message(f"Unsupported platform: {platform}", 'error')
     else:
         # 构建所有平台
         builder.build_all()
