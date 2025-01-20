@@ -241,6 +241,26 @@ def update_cursor_auth(email=None, access_token=None, refresh_token=None):
     return result
 
 
+def simulate_human_typing(tab, selector, text, min_delay=0.1, max_delay=0.3):
+    """模拟人类输入文字"""
+    try:
+        element = tab.ele(selector)
+        element.click()  # 先点击激活输入框
+        time.sleep(random.uniform(0.3, 0.8))  # 点击后短暂停顿
+        
+        for char in text:
+            element.input(char)  # 逐字输入
+            # 为每个字符添加随机延迟
+            time.sleep(random.uniform(min_delay, max_delay))
+            
+        # 输入完成后的短暂停顿
+        time.sleep(random.uniform(0.5, 1.0))
+        return True
+    except Exception as e:
+        print(f"{Fore.RED}{EMOJI['ERROR']} 输入失败: {str(e)}{Style.RESET_ALL}")
+        return False
+
+
 def sign_up_account(browser, tab):
     # 添加 URL 常量
     sign_up_url = "https://authenticator.cursor.sh/sign-up"
@@ -280,20 +300,29 @@ def sign_up_account(browser, tab):
     try:
         if tab.ele("@name=first_name"):
             print(f"\n{Fore.YELLOW}{EMOJI['FORM']} [1/5] 填写注册信息...{Style.RESET_ALL}")
-            tab.actions.click("@name=first_name").input(first_name)
-            time.sleep(random.uniform(1, 3))
-
-            tab.actions.click("@name=last_name").input(last_name)
-            time.sleep(random.uniform(1, 3))
-
-            tab.actions.click("@name=email").input(account)
-            time.sleep(random.uniform(1, 3))
-
-            tab.actions.click("@type=submit")
+            
+            # 模拟人类输入名字
+            print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入名字...{Style.RESET_ALL}")
+            simulate_human_typing(tab, "@name=first_name", first_name)
+            time.sleep(random.uniform(0.8, 1.5))  # 字段之间的停顿
+            
+            # 模拟人类输入姓氏
+            print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入姓氏...{Style.RESET_ALL}")
+            simulate_human_typing(tab, "@name=last_name", last_name)
+            time.sleep(random.uniform(0.8, 1.5))
+            
+            # 模拟人类输入邮箱
+            print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入邮箱...{Style.RESET_ALL}")
+            simulate_human_typing(tab, "@name=email", account)
+            time.sleep(random.uniform(1.0, 2.0))
+            
+            # 提交表单
+            print(f"{Fore.CYAN}{EMOJI['WAIT']} 提交表单...{Style.RESET_ALL}")
+            tab.ele("@type=submit").click()
             show_progress(1, total_steps)
 
     except Exception as e:
-        print(f"\n{Fore.RED}{EMOJI['ERROR']} 打开注册页面失败{Style.RESET_ALL}")
+        print(f"\n{Fore.RED}{EMOJI['ERROR']} 填写注册信息失败: {str(e)}{Style.RESET_ALL}")
         return False
 
     print(f"\n{Fore.YELLOW}{EMOJI['VERIFY']} [2/5] 处理验证...{Style.RESET_ALL}")
@@ -303,15 +332,16 @@ def sign_up_account(browser, tab):
     try:
         if tab.ele("@name=password"):
             print(f"\n{Fore.YELLOW}{EMOJI['PASSWORD']} [3/5] 设置密码...{Style.RESET_ALL}")
-            tab.ele("@name=password").input(password)
-            time.sleep(random.uniform(1, 3))
+            # 模拟人类输入密码
+            simulate_human_typing(tab, "@name=password", password, min_delay=0.15, max_delay=0.35)
+            time.sleep(random.uniform(1.0, 2.0))
 
             tab.ele("@type=submit").click()
             print(f"{Fore.CYAN}{EMOJI['WAIT']} 请稍等...{Style.RESET_ALL}")
             show_progress(3, total_steps)
 
     except Exception as e:
-        print(f"\n{Fore.RED}{EMOJI['ERROR']} 执行失败{Style.RESET_ALL}")
+        print(f"\n{Fore.RED}{EMOJI['ERROR']} 设置密码失败: {str(e)}{Style.RESET_ALL}")
         return False
 
     time.sleep(random.uniform(1, 3))
@@ -332,14 +362,15 @@ def sign_up_account(browser, tab):
                 if not code:
                     return False
 
-                i = 0
-                for digit in code:
-                    tab.ele(f"@data-index={i}").input(digit)
-                    time.sleep(random.uniform(0.1, 0.3))
-                    i += 1
+                print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入验证码...{Style.RESET_ALL}")
+                # 模拟人类输入验证码
+                for i, digit in enumerate(code):
+                    # 为每个数字框添加输入延迟
+                    time.sleep(random.uniform(0.3, 0.6))
+                    simulate_human_typing(tab, f"@data-index={i}", digit, min_delay=0.1, max_delay=0.25)
                 break
         except Exception as e:
-            print(f"{Fore.RED}{e}{Style.RESET_ALL}")
+            print(f"{Fore.RED}{EMOJI['ERROR']} 输入验证码失败: {str(e)}{Style.RESET_ALL}")
 
     print(f"\n{Fore.YELLOW}{EMOJI['DONE']} [5/5] 完成注册...{Style.RESET_ALL}")
     handle_turnstile(tab)
