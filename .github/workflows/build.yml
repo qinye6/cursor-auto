@@ -17,13 +17,10 @@ jobs:
         include:
           - os: ubuntu-latest
             platform: linux
-            artifact_name: cursor-auto-linux-x64
           - os: windows-latest
             platform: windows
-            artifact_name: cursor-auto-windows-x64.exe
           - os: macos-latest
             platform: darwin
-            artifact_name: cursor-auto-darwin-x64
             
     runs-on: ${{ matrix.os }}
     
@@ -65,7 +62,10 @@ jobs:
       run: python build.py ${{ matrix.platform }}
       
     - name: Create Release Directory
-      run: mkdir -p release
+      shell: bash
+      run: |
+        rm -rf release || true
+        mkdir -p release
       
     - name: Copy Release Files (Windows)
       if: matrix.os == 'windows-latest'
@@ -111,35 +111,13 @@ jobs:
         chmod +x release/run.sh
         
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
-      id: upload-attempt-1
-      continue-on-error: true
+      uses: actions/upload-artifact@v4
       with:
         name: cursor-auto-${{ matrix.platform }}-v${{ steps.get_version.outputs.version }}
         path: release/*
         if-no-files-found: error
         retention-days: 5
-        compression-level: 6  # 降低压缩级别以加快速度
 
-    # 如果第一次上传失败，等待后重试
-    - name: Wait and Retry Upload
-      if: steps.upload-attempt-1.outcome == 'failure'
-      run: |
-        echo "First upload attempt failed, waiting 30 seconds before retry..."
-        sleep 30
-
-    - name: Upload Artifacts (Retry)
-      if: steps.upload-attempt-1.outcome == 'failure'
-      uses: actions/upload-artifact@v3
-      id: upload-attempt-2
-      with:
-        name: cursor-auto-${{ matrix.platform }}-v${{ steps.get_version.outputs.version }}
-        path: release/*
-        if-no-files-found: error
-        retention-days: 5
-        compression-level: 0  # 不压缩，优先保证上传成功
-
-    # 如果是发布版本，尝试创建 GitHub Release
     - name: Create GitHub Release
       if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
       uses: softprops/action-gh-release@v1
@@ -163,10 +141,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # 添加构建结果通知
-    - name: Notify Build Status
+    - name: Build Status
       if: always()
       run: |
-        echo "Build Status for ${{ matrix.platform }}: ${{ job.status }}"
-        echo "Artifact Upload Status 1: ${{ steps.upload-attempt-1.outcome }}"
-        echo "Artifact Upload Status 2: ${{ steps.upload-attempt-2.outcome || 'not attempted' }}" 
+        echo "Build Status for ${{ matrix.platform }}: ${{ job.status }}" 
