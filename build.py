@@ -343,30 +343,24 @@ exe = EXE(
             self.print_message(f"Starting build for {platform.capitalize()}", 'info')
             
             # 创建必要的目录
-            self.dist_dir.mkdir(exist_ok=True)
+            release_dir = self.project_root / "release"
+            release_dir.mkdir(exist_ok=True)
             
-            # 构建文件名
-            output_name = f"cursor-auto-{platform}-x64-v{self.version}"
-            if platform == "windows":
-                output_name += ".exe"
+            # 清理旧文件
+            for old_file in release_dir.glob(f"cursor-auto-{platform}*"):
+                old_file.unlink()
             
-            # 设置输出路径
-            output_path = self.dist_dir / output_name
+            # 创建 spec 文件
+            spec_file = self.create_spec(platform)
+            self.print_message(f"Created spec file: {spec_file}", 'info')
             
             # 构建命令
             cmd = [
                 "pyinstaller",
                 "--clean",
                 "--noconfirm",
-                "--name", output_name,
-                "--distpath", str(self.dist_dir),
-                "--workpath", str(self.build_dir),
-                "cursor_pro_keep_alive.py"
+                str(spec_file)
             ]
-            
-            # 添加图标
-            if platform in self.icons and os.path.exists(self.icons[platform]):
-                cmd.extend(["--icon", self.icons[platform]])
             
             # 执行构建
             self.print_message(f"Executing command: {' '.join(cmd)}", 'info')
@@ -377,14 +371,22 @@ exe = EXE(
                 print(f"[OUT] {process.stdout}")
             if process.stderr:
                 print(f"[ERR] {process.stderr}")
-            
+                
             # 检查构建结果
-            if process.returncode == 0 and output_path.exists():
-                self.print_message(f"Build successful: {output_path}", 'success')
-                return True
+            if process.returncode == 0:
+                src_file = self.dist_dir / self.output_names[platform]
+                if self.verify_build(src_file):
+                    dst_file = release_dir / self.output_names[platform]
+                    shutil.copy2(src_file, dst_file)
+                    
+                    if platform in ["linux", "darwin"]:
+                        os.chmod(dst_file, 0o755)
+                    
+                    self.print_message(f"Build successful: {dst_file} ({dst_file.stat().st_size} bytes)", 'success')
+                    return True
             else:
-                self.print_message("Build failed", 'error')
-                return False
+                self.print_message(f"Build failed for {platform.capitalize()}", 'error')
+            return False
                 
         except Exception as e:
             self.print_message(f"Build process error: {str(e)}", 'error')
