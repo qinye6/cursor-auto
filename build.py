@@ -164,16 +164,16 @@ def get_platform_config():
 
 class Builder:
     def __init__(self):
-        self.version = VERSION
         self.project_root = Path(__file__).parent
         self.dist_dir = self.project_root / "dist"
         self.build_dir = self.project_root / "build"
+        self.version = VERSION
         
         # 设置输出文件名
         self.output_names = {
-            "windows": "cursor-auto-windows-x64.exe",
-            "linux": "cursor-auto-linux-x64",
-            "darwin": "cursor-auto-darwin-x64"
+            "windows": f"cursor-auto-windows-x64-v{VERSION}.exe",
+            "linux": f"cursor-auto-linux-x64-v{VERSION}",
+            "darwin": f"cursor-auto-darwin-x64-v{VERSION}"
         }
         
         # 设置图标路径
@@ -185,12 +185,12 @@ class Builder:
 
     def create_spec(self, platform):
         """创建 .spec 文件"""
-        output_name = f"cursor-auto-{platform}-x64-v{self.version}"
+        output_name = self.output_names[platform]
         icon_path = self.icons.get(platform)
         
         # 检查图标文件是否存在
         if icon_path and os.path.exists(icon_path):
-            icon_config = f"icon=['{icon_path}']"
+            icon_config = f"icon='{icon_path}'"
         else:
             icon_config = "icon=None"
         
@@ -213,8 +213,8 @@ a = Analysis(
 pyz = PYZ(a.pure)
 """
 
-        # 平台特定的配置
-        if platform == "windows":
+        # 平台特定配置
+        if platform == "linux":
             platform_config = f"""
 exe = EXE(
     pyz,
@@ -233,36 +233,12 @@ exe = EXE(
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
-    target_arch=None,
+    target_arch='x86_64',
     codesign_identity=None,
     entitlements_file=None,
     {icon_config}
 )"""
-        elif platform == "linux":
-            platform_config = f"""
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
-    name='{output_name}',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=True,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    {icon_config}
-)"""
-        else:  # darwin
+        elif platform == "darwin":
             platform_config = f"""
 exe = EXE(
     pyz,
@@ -285,13 +261,30 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     {icon_config}
-)
-
-app = BUNDLE(
-    exe,
-    name='{output_name}.app',
-    {icon_config},
-    bundle_identifier=None,
+)"""
+        else:  # windows
+            platform_config = f"""
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='{output_name}',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    {icon_config}
 )"""
 
         # 创建 spec 文件
@@ -327,54 +320,30 @@ app = BUNDLE(
                 print(f"[OUT] {process.stdout}")
             if process.stderr:
                 print(f"[ERR] {process.stderr}")
-            
+                
             # 检查构建结果
             if process.returncode == 0:
                 print(f"{Fore.GREEN}[+] {platform.capitalize()} 版本构建成功{Style.RESET_ALL}")
                 
-                try:
-                    # 创建 releases 目录
-                    releases_dir = self.project_root / "releases"
-                    releases_dir.mkdir(exist_ok=True)
+                # 创建 release 目录
+                release_dir = self.project_root / "release"
+                release_dir.mkdir(exist_ok=True)
+                
+                # 复制构建文件到 release 目录
+                src_file = self.dist_dir / self.output_names[platform]
+                dst_file = release_dir / self.output_names[platform]
+                
+                if src_file.exists():
+                    shutil.copy2(src_file, dst_file)
                     
-                    # 根据平台处理文件
-                    if platform == "windows":
-                        src_file = self.dist_dir / "cursor-auto-windows-x64.exe"
-                        dst_file = releases_dir / "cursor-auto-windows-x64.exe"
-                    elif platform == "linux":
-                        src_file = self.dist_dir / "cursor-auto-linux-x64.exe"
-                        dst_file = releases_dir / "cursor-auto-linux-x64"
-                    else:  # darwin
-                        src_file = self.dist_dir / "cursor-auto-darwin-x64.exe"
-                        dst_file = releases_dir / "cursor-auto-darwin-x64"
+                    # 设置可执行权限（Linux/macOS）
+                    if platform in ["linux", "darwin"]:
+                        os.chmod(dst_file, 0o755)
                     
-                    # 复制文件
-                    if src_file.exists():
-                        shutil.copy2(src_file, dst_file)
-                        print(f"{Fore.GREEN}[+] 文件已复制到: {dst_file}{Style.RESET_ALL}")
-                        
-                        # 设置可执行权限（对于 Linux 和 macOS）
-                        if platform in ["linux", "darwin"]:
-                            os.chmod(dst_file, 0o755)  # rwxr-xr-x
-                            print(f"{Fore.GREEN}[+] 已设置可执行权限{Style.RESET_ALL}")
-                        
-                        # 处理 macOS 的 .app 包
-                        if platform == "darwin":
-                            app_src = self.dist_dir / "cursor-auto-darwin-x64.app"
-                            if app_src.exists():
-                                app_dst = releases_dir / "cursor-auto-darwin-x64.app"
-                                if app_dst.exists():
-                                    shutil.rmtree(app_dst)
-                                shutil.copytree(app_src, app_dst)
-                                print(f"{Fore.GREEN}[+] macOS App包已复制到: {app_dst}{Style.RESET_ALL}")
-                        
-                        return True
-                    else:
-                        print(f"{Fore.RED}[-] 找不到源文件: {src_file}{Style.RESET_ALL}")
-                        return False
-                        
-                except Exception as e:
-                    print(f"{Fore.RED}[-] 处理文件时出错: {str(e)}{Style.RESET_ALL}")
+                    print(f"{Fore.GREEN}[+] 文件已复制到: {dst_file}{Style.RESET_ALL}")
+                    return True
+                else:
+                    print(f"{Fore.RED}[-] 找不到源文件: {src_file}{Style.RESET_ALL}")
                     return False
             else:
                 print(f"{Fore.RED}[-] {platform.capitalize()} 版本构建失败{Style.RESET_ALL}")
@@ -405,7 +374,7 @@ app = BUNDLE(
         paths_to_clean = [
             self.dist_dir,
             self.build_dir,
-            self.project_root / "releases"
+            self.project_root / "release"
         ]
         for path in paths_to_clean:
             if path.exists():

@@ -75,8 +75,8 @@ jobs:
     - name: Copy Release Files (Linux/macOS)
       if: matrix.os != 'windows-latest'
       run: |
-        cp dist/${{ matrix.artifact_name }} release/
-        chmod +x release/${{ matrix.artifact_name }}
+        cp dist/cursor-auto-${{ matrix.platform }}-x64-v${{ steps.get_version.outputs.version }} release/
+        chmod +x release/cursor-auto-${{ matrix.platform }}-x64-v${{ steps.get_version.outputs.version }}
         
     - name: Create run.sh for Linux
       if: matrix.os == 'ubuntu-latest'
