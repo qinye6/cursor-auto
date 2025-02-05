@@ -46,6 +46,7 @@ a = Analysis(
         ('email_api.py', '.'),
         ('get_email_code.py', '.'),
         ('turnstilePatch/*', 'turnstilePatch/'),
+        ('email_generator.py', '.'),
     ],
     hiddenimports=[
         'playwright',
