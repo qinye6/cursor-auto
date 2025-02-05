@@ -500,13 +500,21 @@ def print_status(message, status='info'):
     print(f"{color}{emoji} {message}{Style.RESET_ALL}")
 
 
-@log_function_call
-def main():
+async def main():
     print_logo()
     
     # 检查更新
-    updater = AutoUpdater()
-    updater.check_and_update()
+    print(f"{Fore.CYAN}{EMOJI['INFO']} 检查更新...{Style.RESET_ALL}")
+    try:
+        updater = AutoUpdater()
+        updater.check_and_update()
+        print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 当前已是最新版本{Style.RESET_ALL}")
+    except Exception as e:
+        print(f"{Fore.YELLOW}{EMOJI['WARNING']} 更新检查失败: {str(e)}{Style.RESET_ALL}")
+    
+    # 添加延迟和提示
+    print(f"\n{Fore.CYAN}{EMOJI['INFO']} 正在初始化...{Style.RESET_ALL}")
+    await asyncio.sleep(2)
     
     browser_manager = None
     try:
@@ -518,12 +526,18 @@ def main():
         auto_start = config.get('cursor.auto_start', True)
         
         # 先退出已运行的 Cursor
+        print(f"{Fore.CYAN}{EMOJI['INFO']} 检查并关闭已运行的 Cursor...{Style.RESET_ALL}")
         ExitCursor()
-        time.sleep(2)  # 添加延时，确保完全退出
+        await asyncio.sleep(2)  # 使用异步延时
         
         # 初始化浏览器
+        print(f"{Fore.CYAN}{EMOJI['INFO']} 初始化浏览器...{Style.RESET_ALL}")
         browser_manager = BrowserManager()
-        browser = browser_manager.init_browser()
+        browser = await browser_manager.init_browser()  # 确保这是异步调用
+
+        if not browser:
+            print(f"{Fore.RED}{EMOJI['ERROR']} 浏览器初始化失败{Style.RESET_ALL}")
+            return
 
         # 初始化邮箱验证处理器
         email_handler = EmailVerificationHandler()
@@ -596,9 +610,18 @@ def main():
         logger.error(traceback.format_exc())
     finally:
         if browser_manager:
-            browser_manager.quit()
-        input(f"\n{Fore.CYAN}{EMOJI['WAIT']} 按回车键退出...{Style.RESET_ALL}")
+            await browser_manager.quit()  # 确保这是异步调用
+        
+        print(f"\n{Fore.CYAN}{EMOJI['INFO']} 程序执行完成{Style.RESET_ALL}")
+        input(f"{Fore.CYAN}{EMOJI['WAIT']} 按回车键退出...{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":
-    main()
+    # 使用 asyncio 运行主函数
+    try:
+        if sys.platform.startswith('win'):
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.run(main())
+    except Exception as e:
+        print(f"{Fore.RED}{EMOJI['ERROR']} 程序启动失败: {str(e)}{Style.RESET_ALL}")
+        input("\n按回车键退出...")
