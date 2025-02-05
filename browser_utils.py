@@ -4,6 +4,9 @@ import sys
 import time
 from colorama import Fore, Style
 from config import Config
+import logging
+
+logger = logging.getLogger(__name__)
 
 class BrowserManager:
     def __init__(self):
@@ -73,64 +76,37 @@ class BrowserManager:
 
     def init_browser(self):
         """初始化浏览器"""
-        config = Config()
-        
-        # 获取配置的浏览器设置
-        default_browser = config.get('browser.default')
-        incognito_mode = config.get('browser.incognito', True)
-        headless_mode = config.get('browser.headless', False)
-        
-        # 获取浏览器路径
-        browser_path = None
-        if default_browser in self.BROWSERS:
-            for path in self.BROWSERS[default_browser]['paths']:
-                if os.path.exists(path):
-                    browser_path = path
-                    break
-        
-        if not browser_path:
-            browser_path = self.select_browser()
-        
-        if not browser_path:
-            sys.exit(1)
-            
         try:
             print(f"\n{Fore.CYAN}🚀 正在启动浏览器...{Style.RESET_ALL}")
             
-            options = ChromiumOptions()
-            options.set_browser_path(browser_path)
+            # 创建配置对象
+            co = ChromiumOptions()
             
-            # 应用配置的浏览器选项
-            if incognito_mode:
-                options.set_argument('--incognito')
+            # 设置基本配置
+            co.set_argument('--disable-gpu')
+            co.set_argument('--no-sandbox')
+            co.set_argument('--disable-dev-shm-usage')
+            co.set_argument('--disable-blink-features=AutomationControlled')
             
-            if headless_mode:
-                options.set_argument('--headless')
+            # 设置用户代理
+            co.set_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
             
-            # 添加网络相关配置
-            options.set_argument('--disable-gpu')  # 禁用GPU加速
-            options.set_argument('--disable-dev-shm-usage')  # 禁用/dev/shm使用
-            options.set_argument('--disable-web-security')  # 禁用网络安全限制
-            options.set_argument('--disable-features=NetworkService')  # 禁用网络服务
-            options.set_argument('--disable-site-isolation-trials')  # 禁用站点隔离
+            # 设置窗口大小
+            co.set_argument('--window-size=1920,1080')
             
-            # 其他优化选项
-            options.set_argument('--disable-blink-features=AutomationControlled')
-            options.set_argument('--disable-infobars')
-            options.set_argument('--disable-notifications')
-            options.set_argument('--disable-popup-blocking')
-            options.set_argument('--disable-extensions')
-            options.set_argument('--ignore-certificate-errors')
-            options.set_argument('--ignore-ssl-errors')
+            # 创建浏览器实例
+            self.browser = ChromiumPage()  # 不传递任何参数
             
-            self.browser = ChromiumPage(options)
+            # 等待浏览器初始化
             time.sleep(2)
+            
             print(f"{Fore.GREEN}✅ 浏览器启动成功{Style.RESET_ALL}")
             return self.browser
             
         except Exception as e:
             print(f"{Fore.RED}❌ 浏览器启动失败: {str(e)}{Style.RESET_ALL}")
-            sys.exit(1)
+            logger.error(f"Browser initialization failed: {e}")
+            return None
 
     def quit(self):
         """关闭浏览器"""
@@ -139,4 +115,5 @@ class BrowserManager:
                 self.browser.quit()
                 print(f"\n{Fore.GREEN}✅ 浏览器已关闭{Style.RESET_ALL}")
             except Exception as e:
-                print(f"{Fore.RED}❌ 关闭浏览器失败: {str(e)}{Style.RESET_ALL}")
+                print(f"{Fore.RED}❌ 浏览器关闭失败: {str(e)}{Style.RESET_ALL}")
+                logger.error(f"Browser quit failed: {e}")

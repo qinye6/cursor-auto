@@ -46,7 +46,6 @@ all_hiddenimports.extend([
     'config',
     'logo',
     'exit_cursor',
-    'DrissionPage',
     'requests',
     'json',
     'logging',
@@ -76,6 +75,23 @@ if platform.system() == 'Windows':
         'pywintypes',
     ])
 
+# 添加 DrissionPage 相关的依赖
+all_hiddenimports.extend([
+    'DrissionPage',
+    'DrissionPage.common',
+    'DrissionPage.configs',
+    'DrissionPage.errors',
+    'DrissionPage.mixins',
+    'selenium',
+    'selenium.webdriver',
+    'selenium.webdriver.chrome',
+    'selenium.webdriver.chrome.options',
+    'selenium.webdriver.chrome.service',
+    'selenium.webdriver.common',
+    'selenium.webdriver.common.by',
+    'selenium.webdriver.common.keys',
+])
+
 a = Analysis(
     ['cursor_pro_keep_alive.py'],
     pathex=[],
@@ -95,6 +111,8 @@ a = Analysis(
         ('config.py', '.'),
         ('logo.py', '.'),
         ('exit_cursor.py', '.'),
+        # 添加 DrissionPage 的配置文件
+        ('DrissionPage.configs/*', 'DrissionPage.configs'),
     ],
     hiddenimports=all_hiddenimports,
     hookspath=[],
