@@ -490,7 +490,7 @@ async def main():
         try:
             print(f"{Fore.CYAN}{EMOJI['INFO']} 检查并关闭已运行的 Cursor...{Style.RESET_ALL}")
             ExitCursor()
-            await asyncio.sleep(2)
+            time.sleep(2)
             logger.info("Cursor 进程检查完成")
         except Exception as e:
             logger.error(f"Cursor 进程检查失败: {str(e)}")

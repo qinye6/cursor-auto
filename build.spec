@@ -92,6 +92,16 @@ all_hiddenimports.extend([
     'selenium.webdriver.common.keys',
 ])
 
+# 添加系统相关的依赖
+all_hiddenimports.extend([
+    'psutil',
+    'subprocess',
+    'sys',
+    'os',
+    'time',
+    'logging',
+])
+
 a = Analysis(
     ['cursor_pro_keep_alive.py'],
     pathex=[],
@@ -110,7 +120,7 @@ a = Analysis(
         ('auto_updater.py', '.'),
         ('config.py', '.'),
         ('logo.py', '.'),
-        ('exit_cursor.py', '.'),
+        ('exit_cursor.py', '.'),  # 确保包含这个文件
         # 添加 DrissionPage 的配置文件
         ('DrissionPage.configs/*', 'DrissionPage.configs'),
     ],

@@ -1,124 +1,75 @@
-import psutil
-from logger import logger
-import time
 import os
-import subprocess
-import signal
 import sys
-import ctypes
-from ctypes import wintypes
-import win32con
-import win32process
-import win32gui
+import psutil
+import time
+import subprocess
+from colorama import Fore, Style
+import logging
 
-def get_cursor_windows():
-    """获取所有 Cursor 窗口句柄"""
-    result = []
-    def callback(hwnd, _):
-        if win32gui.IsWindowVisible(hwnd):
-            title = win32gui.GetWindowText(hwnd)
-            if 'cursor' in title.lower():
-                result.append(hwnd)
-    win32gui.EnumWindows(callback, None)
-    return result
-
-def close_window_gracefully(hwnd):
-    """优雅地关闭窗口"""
-    try:
-        # 发送关闭消息
-        win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
-        time.sleep(0.5)  # 等待窗口响应
-        
-        # 检查窗口是否还存在
-        if win32gui.IsWindow(hwnd):
-            # 如果窗口还在，强制结束
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
-            if pid:
-                subprocess.run(['taskkill', '/F', '/PID', str(pid)], 
-                             stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL)
-    except Exception as e:
-        logger.debug(f"关闭窗口时出错: {str(e)}")
+logger = logging.getLogger(__name__)
 
 def ExitCursor():
-    """退出所有 Cursor 进程"""
+    """关闭所有 Cursor 进程"""
     try:
-        # 首先尝试优雅地关闭窗口
-        cursor_windows = get_cursor_windows()
-        for hwnd in cursor_windows:
-            close_window_gracefully(hwnd)
+        cursor_killed = False
+        killed_count = 0
         
-        # 然后确保所有进程都被终止
         for proc in psutil.process_iter(['pid', 'name']):
             try:
-                process_name = proc.info['name'].lower()
-                if 'cursor' in process_name:
-                    # 使用 taskkill 强制结束进程，但重定向输出
-                    subprocess.run(
-                        ['taskkill', '/F', '/PID', str(proc.pid)],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                        creationflags=subprocess.CREATE_NO_WINDOW
-                    )
-                    time.sleep(0.5)
+                # 检查进程名称
+                if proc.info['name'].lower() in ['cursor.exe', 'cursor']:
+                    proc.kill()
+                    cursor_killed = True
+                    killed_count += 1
+                    # 使用 debug 级别记录详细信息
+                    logger.debug(f"已终止 Cursor 进程: PID {proc.info['pid']}")
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
-            except Exception as e:
-                logger.debug(f"结束进程时出错: {str(e)}")
-        
-        time.sleep(1)  # 等待所有进程完全退出
-        return True
-        
+            
+        if cursor_killed:
+            # 只在终端显示简单信息，详细信息记录到日志
+            print(f"{Fore.GREEN}✅ 已关闭 Cursor 进程{Style.RESET_ALL}")
+            logger.debug(f"成功关闭 {killed_count} 个 Cursor 进程")
+            time.sleep(1)  # 给进程一些时间完全关闭
+        else:
+            print(f"{Fore.YELLOW}ℹ️ 未发现运行中的 Cursor 进程{Style.RESET_ALL}")
+            logger.debug("未发现运行中的 Cursor 进程")
+            
     except Exception as e:
-        logger.error(f"退出 Cursor 时出错: {str(e)}")
-        return False
+        print(f"{Fore.RED}❌ 关闭 Cursor 进程时出错: {str(e)}{Style.RESET_ALL}")
+        logger.error(f"关闭 Cursor 进程失败: {e}")
 
 def StartCursor(cursor_path=None):
-    """启动 Cursor
-    
-    Args:
-        cursor_path (str, optional): Cursor 可执行文件的路径. 
-            如果未提供，将使用默认路径.
-    """
+    """启动 Cursor"""
     try:
-        # 如果未提供路径，使用默认路径
+        # 如果没有提供路径，尝试使用默认路径
         if not cursor_path:
-            if os.name == "nt":  # Windows
-                cursor_path = os.path.join(os.getenv("LOCALAPPDATA"), "Programs", "Cursor", "Cursor.exe")
+            if sys.platform.startswith('win'):
+                cursor_path = os.path.join(os.getenv('LOCALAPPDATA'), 'Programs', 'Cursor', 'Cursor.exe')
             else:  # macOS
-                cursor_path = "/Applications/Cursor.app"
-        
-        # 检查文件是否存在
+                cursor_path = '/Applications/Cursor.app'
+
         if not os.path.exists(cursor_path):
-            logger.error(f"Cursor 可执行文件不存在: {cursor_path}")
+            error_msg = f"Cursor 可执行文件未找到: {cursor_path}"
+            print(f"{Fore.RED}❌ {error_msg}{Style.RESET_ALL}")
+            logger.error(error_msg)
             return False
-            
-        # 启动 Cursor（使用新的方式启动以避免显示错误信息）
-        if os.name == "nt":  # Windows
-            # 使用 CREATE_NO_WINDOW 标志来隐藏控制台窗口
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startupinfo.wShowWindow = subprocess.SW_HIDE
-            
-            process = subprocess.Popen(
-                [cursor_path],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                startupinfo=startupinfo,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-        else:  # macOS
-            process = subprocess.Popen(
-                ['open', cursor_path],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            
-        time.sleep(2)  # 等待启动
+
+        # 使用 subprocess 启动 Cursor
+        if sys.platform.startswith('win'):
+            subprocess.Popen([cursor_path], shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            subprocess.Popen(['open', cursor_path])
+
+        success_msg = "Cursor 已启动"
+        print(f"{Fore.GREEN}✅ {success_msg}{Style.RESET_ALL}")
+        logger.debug(success_msg)  # 改用 debug 级别记录
         return True
-        
+
     except Exception as e:
-        logger.error(f"启动 Cursor 时出错: {str(e)}")
+        error_msg = f"启动 Cursor 失败: {str(e)}"
+        print(f"{Fore.RED}❌ {error_msg}{Style.RESET_ALL}")
+        logger.error(error_msg)
         return False
 
 if __name__ == "__main__":
