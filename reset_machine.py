@@ -30,6 +30,10 @@ class MachineIDResetter:
             self.db_path = os.path.expanduser(
                 "~/Library/Application Support/Cursor/User/globalStorage/storage.json"
             )
+        # 添加历史记录
+        self.history = []
+        # 添加备份管理
+        self.backups = {}
 
     def generate_new_ids(self):
         """生成新的机器ID"""
@@ -145,6 +149,17 @@ class MachineIDResetter:
             print(f"{Fore.RED}{EMOJI['ERROR']} 重置过程出错: {str(e)}{Style.RESET_ALL}")
             return False
 
+    def backup_ids(self):
+        """备份当前标识"""
+        current_ids = self.get_current_ids()
+        backup_id = str(uuid.uuid4())
+        self.backups[backup_id] = current_ids
+        return backup_id
+        
+    def restore_backup(self, backup_id):
+        """恢复备份"""
+        if backup_id in self.backups:
+            return self.set_machine_ids(self.backups[backup_id])
 
 if __name__ == "__main__":
     print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
