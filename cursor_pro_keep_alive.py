@@ -43,6 +43,8 @@ os.environ["PYINSTALLER_VERBOSE"] = "0"
 
 import time
 import random
+import asyncio
+import traceback
 from cursor_auth_manager import CursorAuthManager
 import os
 from logger import logging, logger, log_function_call
@@ -52,6 +54,7 @@ from logo import print_logo
 from reset_machine import MachineIDResetter
 import psutil
 from auto_updater import AutoUpdater
+from email_generator import EmailGenerator
 
 # 在文件开头设置日志
 class ColoredFormatter(logging.Formatter):
@@ -606,7 +609,6 @@ async def main():
 
     except Exception as e:
         logger.error(f"程序执行出错: {str(e)}")
-        import traceback
         logger.error(traceback.format_exc())
     finally:
         if browser_manager:
@@ -624,4 +626,6 @@ if __name__ == "__main__":
         asyncio.run(main())
     except Exception as e:
         print(f"{Fore.RED}{EMOJI['ERROR']} 程序启动失败: {str(e)}{Style.RESET_ALL}")
+        logger.error(f"程序启动失败: {str(e)}")
+        logger.error(traceback.format_exc())
         input("\n按回车键退出...")
