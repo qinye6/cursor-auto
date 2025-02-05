@@ -459,44 +459,55 @@ def print_status(message, status='info'):
 
 
 async def main():
-    print_logo()
-    
-    # 检查更新
-    print(f"{Fore.CYAN}{EMOJI['INFO']} 检查更新...{Style.RESET_ALL}")
-    try:
-        updater = AutoUpdater()
-        updater.check_and_update()
-        print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 当前已是最新版本{Style.RESET_ALL}")
-    except Exception as e:
-        print(f"{Fore.YELLOW}{EMOJI['WARNING']} 更新检查失败: {str(e)}{Style.RESET_ALL}")
-    
-    # 添加延迟和提示
-    print(f"\n{Fore.CYAN}{EMOJI['INFO']} 正在初始化...{Style.RESET_ALL}")
-    await asyncio.sleep(2)
-    
     browser_manager = None
     try:
-        # 加载配置
-        config = Config()
+        print_logo()
         
-        # 获取 Cursor 路径
-        cursor_path = config.get('cursor.path')
-        auto_start = config.get('cursor.auto_start', True)
+        # 检查更新
+        print(f"{Fore.CYAN}{EMOJI['INFO']} 检查更新...{Style.RESET_ALL}")
+        try:
+            updater = AutoUpdater()
+            updater.check_and_update()
+            print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 当前已是最新版本{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.YELLOW}{EMOJI['WARNING']} 更新检查失败: {str(e)}{Style.RESET_ALL}")
+            logger.error(f"更新检查失败: {str(e)}")
+            logger.error(traceback.format_exc())
         
-        # 先退出已运行的 Cursor
-        print(f"{Fore.CYAN}{EMOJI['INFO']} 检查并关闭已运行的 Cursor...{Style.RESET_ALL}")
-        ExitCursor()
-        await asyncio.sleep(2)  # 使用异步延时
+        # 添加延迟和提示
+        print(f"\n{Fore.CYAN}{EMOJI['INFO']} 正在初始化...{Style.RESET_ALL}")
+        await asyncio.sleep(2)
         
+        # 初始化配置
+        try:
+            config = Config()
+            logger.info("配置加载成功")
+        except Exception as e:
+            logger.error(f"配置加载失败: {str(e)}")
+            raise
+            
+        # 检查并关闭已运行的 Cursor
+        try:
+            print(f"{Fore.CYAN}{EMOJI['INFO']} 检查并关闭已运行的 Cursor...{Style.RESET_ALL}")
+            ExitCursor()
+            await asyncio.sleep(2)
+            logger.info("Cursor 进程检查完成")
+        except Exception as e:
+            logger.error(f"Cursor 进程检查失败: {str(e)}")
+            # 继续执行，不抛出异常
+            
         # 初始化浏览器
         print(f"{Fore.CYAN}{EMOJI['INFO']} 初始化浏览器...{Style.RESET_ALL}")
         browser_manager = BrowserManager()
-        browser = await browser_manager.init_browser()  # 确保这是异步调用
-
+        browser = browser_manager.init_browser()
+        
         if not browser:
             print(f"{Fore.RED}{EMOJI['ERROR']} 浏览器初始化失败{Style.RESET_ALL}")
             return
 
+        # 使用 browser 进行操作
+        tab = browser  # DrissionPage 不需要获取 latest_tab
+        
         # 初始化邮箱验证处理器
         email_handler = EmailVerificationHandler()
 
@@ -517,7 +528,6 @@ async def main():
         
         auto_update_cursor_auth = True
 
-        tab = browser.latest_tab
         tab.run_js("try { turnstile.reset() } catch(e) { }")
 
         tab.get(login_url)
@@ -538,23 +548,23 @@ async def main():
                         logger.info("机器标识重置成功")
                         
                         # 检查是否需要自动启动 Cursor
-                        if auto_start:
-                            if cursor_path and os.path.exists(cursor_path):
-                                logger.info(f"正在启动 Cursor: {cursor_path}")
-                                StartCursor(cursor_path)
+                        cursor_path = config.get('cursor.path')
+                        if cursor_path and os.path.exists(cursor_path):
+                            logger.info(f"正在启动 Cursor: {cursor_path}")
+                            StartCursor(cursor_path)
+                        else:
+                            logger.warning("Cursor 路径未配置或不存在，但将尝试使用默认路径启动")
+                            # 尝试使用默认路径
+                            if os.name == "nt":  # Windows
+                                default_path = os.path.join(os.getenv("LOCALAPPDATA"), "Programs", "Cursor", "Cursor.exe")
+                            else:  # macOS
+                                default_path = "/Applications/Cursor.app"
+                            
+                            if os.path.exists(default_path):
+                                logger.info(f"使用默认路径启动 Cursor: {default_path}")
+                                StartCursor(default_path)
                             else:
-                                logger.warning("Cursor 路径未配置或不存在，但将尝试使用默认路径启动")
-                                # 尝试使用默认路径
-                                if os.name == "nt":  # Windows
-                                    default_path = os.path.join(os.getenv("LOCALAPPDATA"), "Programs", "Cursor", "Cursor.exe")
-                                else:  # macOS
-                                    default_path = "/Applications/Cursor.app"
-                                
-                                if os.path.exists(default_path):
-                                    logger.info(f"使用默认路径启动 Cursor: {default_path}")
-                                    StartCursor(default_path)
-                                else:
-                                    logger.error("无法找到 Cursor 可执行文件")
+                                logger.error("无法找到 Cursor 可执行文件")
                 else:
                     logger.error("账户注册失败")
 
@@ -563,11 +573,12 @@ async def main():
             logger.error(f"操作执行失败: {str(e)}", exc_info=True)
 
     except Exception as e:
+        print(f"{Fore.RED}{EMOJI['ERROR']} 程序执行出错: {str(e)}{Style.RESET_ALL}")
         logger.error(f"程序执行出错: {str(e)}")
         logger.error(traceback.format_exc())
     finally:
         if browser_manager:
-            await browser_manager.quit()  # 确保这是异步调用
+            browser_manager.quit()
         
         print(f"\n{Fore.CYAN}{EMOJI['INFO']} 程序执行完成{Style.RESET_ALL}")
         input(f"{Fore.CYAN}{EMOJI['WAIT']} 按回车键退出...{Style.RESET_ALL}")
