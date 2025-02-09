@@ -6,10 +6,22 @@ import subprocess
 from packaging import version
 from logger import logger
 from colorama import Fore, Style
+from version import VERSION
+
+# 添加 EMOJI 常量
+EMOJI = {
+    'INFO': 'ℹ️',
+    'SUCCESS': '✅',
+    'WARNING': '⚠️',
+    'ERROR': '❌',
+    'DOWNLOAD': '📥',
+    'UPDATE': '🔄',
+    'ROCKET': '🚀'
+}
 
 class AutoUpdater:
     def __init__(self):
-        self.current_version = "1.0.1"  # 当前版本号
+        self.current_version = VERSION  # 使用 version.py 中定义的版本号
         self.github_api = "https://api.github.com/repos/qinye6/cursor-auto/releases/latest"
         self.update_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "updates")
         self.system = platform.system().lower()
@@ -116,44 +128,44 @@ class AutoUpdater:
     def check_and_update(self):
         """检查并执行更新"""
         try:
-            print(f"\n{Fore.CYAN}检查更新...{Style.RESET_ALL}")
+            print(f"\n{Fore.CYAN}{EMOJI['INFO']} 检查更新...{Style.RESET_ALL}")
             
             # 获取最新版本信息
             latest_info = self.get_latest_version()
             if not latest_info:
-                print(f"{Fore.YELLOW}无法获取更新信息{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}{EMOJI['WARNING']} 无法获取更新信息{Style.RESET_ALL}")
                 return False
                 
             # 检查是否需要更新
             if not self.needs_update(latest_info["version"]):
-                print(f"{Fore.GREEN}当前已是最新版本{Style.RESET_ALL}")
+                print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 当前已是最新版本{Style.RESET_ALL}")
                 return False
                 
-            print(f"\n{Fore.YELLOW}发现新版本: {latest_info['version']}{Style.RESET_ALL}")
+            print(f"\n{Fore.YELLOW}{EMOJI['INFO']} 发现新版本: {latest_info['version']}{Style.RESET_ALL}")
             
             # 询问用户是否更新
-            if input("\n是否现在更新? (y/n): ").lower() != 'y':
+            if input(f"\n{EMOJI['UPDATE']} 是否现在更新? (y/n): ").lower() != 'y':
                 return False
                 
             # 下载更新
             update_file = self.download_update(latest_info["download_url"])
             
             if not update_file:
-                print(f"\n{Fore.RED}更新下载失败{Style.RESET_ALL}")
+                print(f"\n{Fore.RED}{EMOJI['ERROR']} 更新下载失败{Style.RESET_ALL}")
                 return False
                 
-            print(f"\n{Fore.GREEN}更新下载完成{Style.RESET_ALL}")
+            print(f"\n{Fore.GREEN}{EMOJI['SUCCESS']} 更新下载完成{Style.RESET_ALL}")
             
             # 安装更新
-            print(f"\n{Fore.YELLOW}正在安装更新...{Style.RESET_ALL}")
+            print(f"\n{Fore.YELLOW}{EMOJI['UPDATE']} 正在安装更新...{Style.RESET_ALL}")
             if self.install_update(update_file):
-                print(f"\n{Fore.GREEN}更新安装成功{Style.RESET_ALL}")
+                print(f"\n{Fore.GREEN}{EMOJI['SUCCESS']} 更新安装成功{Style.RESET_ALL}")
                 return True
             else:
-                print(f"\n{Fore.RED}更新安装失败{Style.RESET_ALL}")
+                print(f"\n{Fore.RED}{EMOJI['ERROR']} 更新安装失败{Style.RESET_ALL}")
                 return False
                 
         except Exception as e:
             logger.error(f"更新过程失败: {str(e)}")
-            print(f"\n{Fore.RED}更新过程出错: {str(e)}{Style.RESET_ALL}")
+            print(f"\n{Fore.RED}{EMOJI['ERROR']} 更新过程出错: {str(e)}{Style.RESET_ALL}")
             return False 

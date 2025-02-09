@@ -123,12 +123,12 @@ class MachineIDResetter:
             new_guid = str(uuid.uuid4())
             winreg.SetValueEx(key, "MachineGuid", 0, winreg.REG_SZ, new_guid)
             winreg.CloseKey(key)
-            logger.info("Windows MachineGuid updated successfully")
+            print(f"{Fore.GREEN}{EMOJI['SUCCESS']} Windows MachineGuid 更新成功{Style.RESET_ALL}")
         except PermissionError:
             print(f"{Fore.YELLOW}{EMOJI['INFO']} 需要管理员权限来更新Windows MachineGuid{Style.RESET_ALL}")
             raise
         except Exception as e:
-            logger.error(f"Failed to update Windows MachineGuid: {e}")
+            print(f"{Fore.RED}{EMOJI['ERROR']} 无法更新 Windows MachineGuid{Style.RESET_ALL}")
             raise
 
     def _update_macos_platform_uuid(self, new_ids):
@@ -140,11 +140,15 @@ class MachineIDResetter:
                 cmd = f'sudo plutil -replace "UUID" -string "{new_ids["telemetry.macMachineId"]}" "{uuid_file}"'
                 result = os.system(cmd)
                 if result == 0:
-                    logger.info("macOS Platform UUID updated successfully")
+                    print(f"{Fore.GREEN}{EMOJI['SUCCESS']} macOS Platform UUID 更新成功{Style.RESET_ALL}")
                 else:
+                    print(f"{Fore.RED}{EMOJI['ERROR']} 无法更新 macOS Platform UUID{Style.RESET_ALL}")
                     raise Exception("Failed to execute plutil command")
+        except PermissionError:
+            print(f"{Fore.YELLOW}{EMOJI['INFO']} 需要管理员权限来更新 macOS Platform UUID{Style.RESET_ALL}")
+            raise
         except Exception as e:
-            logger.error(f"Failed to update macOS Platform UUID: {e}")
+            print(f"{Fore.RED}{EMOJI['ERROR']} 无法更新 macOS Platform UUID{Style.RESET_ALL}")
             raise
 
     def update_config_file(self, new_ids):

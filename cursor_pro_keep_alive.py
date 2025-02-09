@@ -99,6 +99,10 @@ def show_progress(progress, total, prefix='Progress:', suffix='Complete', length
 
 
 def handle_turnstile(tab):
+    # 首先检查是否需要验证
+    if tab.ele("Account Settings") or tab.ele("@data-index=0"):
+        return True
+        
     print(f"{Fore.CYAN}{EMOJI['VERIFY']} 开始突破 Turnstile 验证{Style.RESET_ALL}")
     max_attempts = 3
     attempt = 0
@@ -120,7 +124,7 @@ def handle_turnstile(tab):
                 
                 # 尝试找到并点击验证框
                 challengeCheck = (
-                    tab.ele("@id=cf-turnstile", timeout=5)
+                    tab.ele("@id=cf-turnstile", timeout=3)
                     .child()
                     .shadow_root.ele("tag:iframe")
                     .ele("tag:body")
@@ -266,163 +270,168 @@ def simulate_human_typing(tab, selector, text, min_delay=0.1, max_delay=0.3):
 
 
 def sign_up_account(browser, tab):
-    # 添加 URL 常量
-    sign_up_url = "https://authenticator.cursor.sh/sign-up"
-    settings_url = "https://www.cursor.com/settings"
+    registration_completed = False
     
-    # 获取配置的邮箱域名
-    config = Config()
-    domain = config.get('email.domain')          # 实际邮箱域名
-    mail_domain = config.get('email.mail_domain')  # 邮箱服务商域名
-    
-    # 初始化邮箱验证处理器
-    email_handler = EmailVerificationHandler()
-    
-    # 生成账号信息
-    email_generator = EmailGenerator()
-    account_info = email_generator.get_account_info()
-    
-    # 从 account_info 中获取账号信息
-    account = account_info['email']
-    password = account_info['password']
-    first_name = account_info['first_name']
-    last_name = account_info['last_name']
-    
-    print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}{EMOJI['START']} 开始 Cursor Pro 注册流程{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}[信息]{Style.RESET_ALL}")
-    print(f"{EMOJI['FORM']} 邮箱服务商: {Fore.GREEN}{mail_domain}{Style.RESET_ALL}")
-    print(f"{EMOJI['FORM']} 临时邮箱地址: {Fore.GREEN}{account}{Style.RESET_ALL}")
-    print(f"{EMOJI['FORM']} 注册名称: {Fore.GREEN}{first_name} {last_name}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n")
-    
-    total_steps = 5
-    show_progress(0, total_steps)
-    tab.get(sign_up_url)
-
     try:
-        if tab.ele("@name=first_name"):
-            print(f"\n{Fore.YELLOW}{EMOJI['FORM']} [1/5] 填写注册信息...{Style.RESET_ALL}")
-            
-            # 模拟人类输入名字
-            print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入名字...{Style.RESET_ALL}")
-            simulate_human_typing(tab, "@name=first_name", first_name)
-            time.sleep(random.uniform(0.8, 1.5))  # 字段之间的停顿
-            
-            # 模拟人类输入姓氏
-            print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入姓氏...{Style.RESET_ALL}")
-            simulate_human_typing(tab, "@name=last_name", last_name)
-            time.sleep(random.uniform(0.8, 1.5))
-            
-            # 模拟人类输入邮箱
-            print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入邮箱...{Style.RESET_ALL}")
-            simulate_human_typing(tab, "@name=email", account)
-            time.sleep(random.uniform(1.0, 2.0))
-            
-            # 提交表单
-            print(f"{Fore.CYAN}{EMOJI['WAIT']} 提交表单...{Style.RESET_ALL}")
-            tab.ele("@type=submit").click()
-            show_progress(1, total_steps)
+        # 添加 URL 常量
+        sign_up_url = "https://authenticator.cursor.sh/sign-up"
+        settings_url = "https://www.cursor.com/settings"
+        
+        # 获取配置的邮箱域名
+        config = Config()
+        domain = config.get('email.domain')          # 实际邮箱域名
+        mail_domain = config.get('email.mail_domain')  # 邮箱服务商域名
+        
+        # 初始化邮箱验证处理器
+        email_handler = EmailVerificationHandler()
+        
+        # 生成账号信息
+        email_generator = EmailGenerator()
+        account_info = email_generator.get_account_info()
+        
+        # 从 account_info 中获取账号信息
+        account = account_info['email']
+        password = account_info['password']
+        first_name = account_info['first_name']
+        last_name = account_info['last_name']
+        
+        print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{EMOJI['START']} 开始 Cursor Pro 注册流程{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}[信息]{Style.RESET_ALL}")
+        print(f"{EMOJI['FORM']} 邮箱服务商: {Fore.GREEN}{mail_domain}{Style.RESET_ALL}")
+        print(f"{EMOJI['FORM']} 临时邮箱地址: {Fore.GREEN}{account}{Style.RESET_ALL}")
+        print(f"{EMOJI['FORM']} 注册名称: {Fore.GREEN}{first_name} {last_name}{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n")
+        
+        total_steps = 5
+        show_progress(0, total_steps)
+        tab.get(sign_up_url)
 
-    except Exception as e:
-        print(f"\n{Fore.RED}{EMOJI['ERROR']} 填写注册信息失败: {str(e)}{Style.RESET_ALL}")
-        return False
-
-    print(f"\n{Fore.YELLOW}{EMOJI['VERIFY']} [2/5] 处理验证...{Style.RESET_ALL}")
-    handle_turnstile(tab)
-    show_progress(2, total_steps)
-
-    try:
-        if tab.ele("@name=password"):
-            print(f"\n{Fore.YELLOW}{EMOJI['PASSWORD']} [3/5] 设置密码...{Style.RESET_ALL}")
-            # 模拟人类输入密码
-            simulate_human_typing(tab, "@name=password", password, min_delay=0.15, max_delay=0.35)
-            time.sleep(random.uniform(1.0, 2.0))
-
-            tab.ele("@type=submit").click()
-            print(f"{Fore.CYAN}{EMOJI['WAIT']} 请稍等...{Style.RESET_ALL}")
-            show_progress(3, total_steps)
-
-    except Exception as e:
-        print(f"\n{Fore.RED}{EMOJI['ERROR']} 设置密码失败: {str(e)}{Style.RESET_ALL}")
-        return False
-
-    time.sleep(random.uniform(1, 3))
-    if tab.ele("This email is not available."):
-        print(f"\n{Fore.RED}{EMOJI['ERROR']} 执行失败{Style.RESET_ALL}")
-        return False
-
-    print(f"\n{Fore.YELLOW}{EMOJI['CODE']} [4/5] 处理验证码...{Style.RESET_ALL}")
-    handle_turnstile(tab)
-    show_progress(4, total_steps)
-
-    while True:
         try:
-            if tab.ele("Account Settings"):
-                break
-            if tab.ele("@data-index=0"):
-                code = email_handler.get_verification_code(account)
-                if not code:
-                    return False
+            if tab.ele("@name=first_name"):
+                print(f"\n{Fore.YELLOW}{EMOJI['FORM']} [1/5] 填写注册信息...{Style.RESET_ALL}")
+                
+                # 模拟人类输入名字
+                print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入名字...{Style.RESET_ALL}")
+                simulate_human_typing(tab, "@name=first_name", first_name)
+                time.sleep(random.uniform(0.8, 1.5))  # 字段之间的停顿
+                
+                # 模拟人类输入姓氏
+                print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入姓氏...{Style.RESET_ALL}")
+                simulate_human_typing(tab, "@name=last_name", last_name)
+                time.sleep(random.uniform(0.8, 1.5))
+                
+                # 模拟人类输入邮箱
+                print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入邮箱...{Style.RESET_ALL}")
+                simulate_human_typing(tab, "@name=email", account)
+                time.sleep(random.uniform(1.0, 2.0))
+                
+                # 提交表单
+                print(f"{Fore.CYAN}{EMOJI['WAIT']} 提交表单...{Style.RESET_ALL}")
+                tab.ele("@type=submit").click()
+                show_progress(1, total_steps)
 
-                print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入验证码...{Style.RESET_ALL}")
-                # 模拟人类输入验证码
-                for i, digit in enumerate(code):
-                    # 为每个数字框添加输入延迟
-                    time.sleep(random.uniform(0.3, 0.6))
-                    simulate_human_typing(tab, f"@data-index={i}", digit, min_delay=0.1, max_delay=0.25)
-                break
         except Exception as e:
-            print(f"{Fore.RED}{EMOJI['ERROR']} 输入验证码失败: {str(e)}{Style.RESET_ALL}")
+            print(f"\n{Fore.RED}{EMOJI['ERROR']} 填写注册信息失败: {str(e)}{Style.RESET_ALL}")
+            return False
 
-    print(f"\n{Fore.YELLOW}{EMOJI['DONE']} [5/5] 完成注册...{Style.RESET_ALL}")
-    handle_turnstile(tab)
-    wait_time = random.randint(3, 6)
-    for i in range(wait_time):
-        print(f"{Fore.CYAN}{EMOJI['WAIT']} 等待中... {wait_time-i}秒{Style.RESET_ALL}")
-        time.sleep(1)
-    
-    # 获取可用额度
-    total_usage = "未知"
-    tab.get(settings_url)
-    try:
-        usage_selector = (
-            "css:div.col-span-2 > div > div > div > div > "
-            "div:nth-child(1) > div.flex.items-center.justify-between.gap-2 > "
-            "span.font-mono.text-sm\\/\\[0\\.875rem\\]"
+        print(f"\n{Fore.YELLOW}{EMOJI['VERIFY']} [2/5] 处理验证...{Style.RESET_ALL}")
+        handle_turnstile(tab)
+        show_progress(2, total_steps)
+
+        try:
+            if tab.ele("@name=password"):
+                print(f"\n{Fore.YELLOW}{EMOJI['PASSWORD']} [3/5] 设置密码...{Style.RESET_ALL}")
+                # 模拟人类输入密码
+                simulate_human_typing(tab, "@name=password", password, min_delay=0.15, max_delay=0.35)
+                time.sleep(random.uniform(1.0, 2.0))
+
+                tab.ele("@type=submit").click()
+                print(f"{Fore.CYAN}{EMOJI['WAIT']} 请稍等...{Style.RESET_ALL}")
+                show_progress(3, total_steps)
+
+        except Exception as e:
+            print(f"\n{Fore.RED}{EMOJI['ERROR']} 设置密码失败: {str(e)}{Style.RESET_ALL}")
+            return False
+
+        time.sleep(random.uniform(1, 3))
+        if tab.ele("This email is not available."):
+            print(f"\n{Fore.RED}{EMOJI['ERROR']} 执行失败{Style.RESET_ALL}")
+            return False
+
+        print(f"\n{Fore.YELLOW}{EMOJI['CODE']} [4/5] 处理验证码...{Style.RESET_ALL}")
+        handle_turnstile(tab)
+        show_progress(4, total_steps)
+
+        while True:
+            try:
+                if tab.ele("Account Settings"):
+                    registration_completed = True
+                    print(f"\n{Fore.YELLOW}{EMOJI['DONE']} [5/5] 完成注册...{Style.RESET_ALL}")
+                    break
+                if tab.ele("@data-index=0"):
+                    code = email_handler.get_verification_code(account)
+                    if not code:
+                        return False
+
+                    print(f"{Fore.CYAN}{EMOJI['WAIT']} 输入验证码...{Style.RESET_ALL}")
+                    # 模拟人类输入验证码
+                    for i, digit in enumerate(code):
+                        # 为每个数字框添加输入延迟
+                        time.sleep(random.uniform(0.3, 0.6))
+                        simulate_human_typing(tab, f"@data-index={i}", digit, min_delay=0.1, max_delay=0.25)
+                    break
+            except Exception as e:
+                print(f"{Fore.RED}{EMOJI['ERROR']} 输入验证码失败: {str(e)}{Style.RESET_ALL}")
+
+        # 只在注册未完成时才进行验证
+        if not registration_completed:
+            handle_turnstile(tab)
+        
+        # 获取可用额度
+        total_usage = "未知"
+        tab.get(settings_url)
+        try:
+            usage_selector = (
+                "css:div.col-span-2 > div > div > div > div > "
+                "div:nth-child(1) > div.flex.items-center.justify-between.gap-2 > "
+                "span.font-mono.text-sm\\/\\[0\\.875rem\\]"
+            )
+            usage_ele = tab.ele(usage_selector)
+            if usage_ele:
+                usage_info = usage_ele.text
+                total_usage = usage_info.split("/")[-1].strip()
+        except Exception as e:
+            print(f"\n{Fore.RED}{EMOJI['ERROR']} 获取可用额度失败: {str(e)}{Style.RESET_ALL}")
+
+        # 显示最终信息
+        account_info = (
+            f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n"
+            f"{Fore.GREEN}{EMOJI['SUCCESS']} Cursor Pro 注册成功！{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n"
+            f"{Fore.YELLOW}[账号信息]{Style.RESET_ALL}\n"
+            f"{EMOJI['MAIL']} 邮箱: {Fore.GREEN}{account}{Style.RESET_ALL}\n"
+            f"{EMOJI['PASSWORD']} 密码: {Fore.GREEN}{password}{Style.RESET_ALL}\n"
+            f"{EMOJI['SUCCESS']} 可用额度: {Fore.GREEN}{total_usage}{Style.RESET_ALL}\n"
+            f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}"
         )
-        usage_ele = tab.ele(usage_selector)
-        if usage_ele:
-            usage_info = usage_ele.text
-            total_usage = usage_info.split("/")[-1].strip()
-    except Exception as e:
-        print(f"\n{Fore.RED}{EMOJI['ERROR']} 获取可用额度失败: {str(e)}{Style.RESET_ALL}")
+        
+        # 只打印一次账号信息
+        print(account_info)
+        
+        # 记录到日志文件，但不显示在控制台
+        logger.info(
+            f"注册成功 - 邮箱: {account}, 密码: {password}, 可用额度: {total_usage}",
+            extra={'print_to_console': False}  # 添加标记，表示不在控制台显示
+        )
+        
+        time.sleep(5)
+        return True
 
-    # 显示最终信息
-    print(f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
-    print(f"{Fore.GREEN}{EMOJI['SUCCESS']} Cursor Pro 注册成功！{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
-    print(f"{Fore.YELLOW}[账号信息]{Style.RESET_ALL}")
-    print(f"{EMOJI['SUCCESS']} 邮箱: {Fore.GREEN}{account}{Style.RESET_ALL}")
-    print(f"{EMOJI['SUCCESS']} 密码: {Fore.GREEN}{password}{Style.RESET_ALL}")
-    print(f"{EMOJI['SUCCESS']} 可用额度: {Fore.GREEN}{total_usage}{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
-    
-    # 记录到日志
-    account_info = (
-        f"\n{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n"
-        f"{Fore.CYAN}Cursor Pro 账号信息{Style.RESET_ALL}\n"
-        f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}\n"
-        f"{EMOJI['FORM']} 邮箱服务商: {Fore.GREEN}{mail_domain}{Style.RESET_ALL}\n"
-        f"{EMOJI['MAIL']} 邮箱: {Fore.GREEN}{account}{Style.RESET_ALL}\n"
-        f"{EMOJI['PASSWORD']} 密码: {Fore.GREEN}{password}{Style.RESET_ALL}\n"
-        f"{EMOJI['SUCCESS']} 可用额度: {Fore.GREEN}{total_usage}{Style.RESET_ALL}\n"
-        f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}"
-    )
-    logging.info(account_info)
-    time.sleep(5)
-    return True
+    except Exception as e:
+        print(f"{Fore.RED}{EMOJI['ERROR']} 注册过程出错: {str(e)}{Style.RESET_ALL}")
+        return False
 
 
 def print_header(title, width=50):
@@ -462,13 +471,10 @@ async def main():
     browser_manager = None
     try:
         print_logo()
-        
         # 检查更新
-        print(f"{Fore.CYAN}{EMOJI['INFO']} 检查更新...{Style.RESET_ALL}")
         try:
             updater = AutoUpdater()
             updater.check_and_update()
-            print(f"{Fore.GREEN}{EMOJI['SUCCESS']} 当前已是最新版本{Style.RESET_ALL}")
         except Exception as e:
             print(f"{Fore.YELLOW}{EMOJI['WARNING']} 更新检查失败: {str(e)}{Style.RESET_ALL}")
             logger.error(f"更新检查失败: {str(e)}")
