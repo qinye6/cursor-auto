@@ -88,12 +88,16 @@ pip install -r requirements.txt
 #### Windows 平台
 
 ```batch
-# 方法 1：双击运行
-双击 build.bat
+# 方法 1：以管理员身份运行
+右键 build.bat -> 以管理员身份运行
 
-# 方法 2：命令行运行
+# 方法 2：命令行运行(需要管理员权限)
+以管理员身份运行命令提示符
+cd /d "项目目录"
 build.bat
 ```
+
+⚠️ **注意**: Windows 平台需要管理员权限才能正常运行程序，因为需要修改系统注册表。
 
 #### macOS 平台
 
@@ -101,9 +105,11 @@ build.bat
 # 添加执行权限
 chmod +x build.mac.command
 
-# 运行脚本
-./build.mac.command
+# 运行脚本 (需要 sudo 权限)
+sudo ./build.mac.command
 ```
+
+⚠️ **注意**: macOS 平台需要 sudo 权限才能正常运行程序，因为需要修改系统标识。
 
 #### Linux 平台
 

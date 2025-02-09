@@ -88,12 +88,16 @@ pip install -r requirements.txt
 #### Windows Platform
 
 ```batch
-# Method 1: Double-click
-Double-click build.bat
+# Method 1: Run as Administrator
+Right-click build.bat -> Run as Administrator
 
-# Method 2: Command line
+# Method 2: Command line (requires Administrator privileges)
+Run Command Prompt as Administrator
+cd /d "project_directory"
 build.bat
 ```
+
+⚠️ **Note**: Windows platform requires Administrator privileges to run properly as it needs to modify system registry.
 
 #### macOS Platform
 
@@ -101,9 +105,11 @@ build.bat
 # Add execution permission
 chmod +x build.mac.command
 
-# Run script
-./build.mac.command
+# Run script (requires sudo privileges)
+sudo ./build.mac.command
 ```
+
+⚠️ **Note**: macOS platform requires sudo privileges to run properly as it needs to modify system identifiers.
 
 #### Linux Platform
 
