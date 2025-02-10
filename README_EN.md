@@ -151,15 +151,32 @@ The project uses JSON format configuration files:
 ```json
 {
     "email": {
-        "service": "your_service",
-        "username": "your_email",
-        "password": "your_password"
+        "domain": "xxxx.xxxx",          // Email domain for address suffix, e.g. xxx@qinye.asia
+        "mail_domain": "xxxx.xxxx",     // Domain of temporary email service provider
+        "prefix_enabled": true,          // Whether to enable random prefix
+        "prefix_length": 8,             // Length of random prefix (used when prefix_enabled is true and no custom_prefix)
+        "custom_prefix": "cursor",       // Custom fixed prefix, e.g. if set to "cursor" will generate cursor123456@qinye.asia
+        "api": {
+            "base_url": "https://xxxx.xxxx",  // Backend API URL for temporary email
+            "admin_password": "xxxxxxxx",      // Admin password for API authentication
+            "web_url": "https://xxxx.xxxx"    // Web interface URL for temporary email
+        }
     },
     "browser": {
-        "type": "chrome",
-        "headless": false
+        "default": "chrome",            // Default browser choice (chrome/edge/brave)
+        "incognito": true,              // Whether to use incognito mode
+        "headless": true                // Whether to use headless mode (no browser window)
+    },
+    "account": {
+        "first_name": "qin",            // First name for registration
+        "last_name": "ye",              // Last name for registration
+        "password_length": 12           // Length of generated random password
+    },
+    "cursor": {
+        "auto_start": true,             // Whether to auto-start Cursor after reset
+        "path": "C:\\Users\\%USERNAME%\\AppData\\Local\\Programs\\cursor\\Cursor.exe"  // Installation path of Cursor
     }
-}
+} 
 ```
 
 2. `config.json`: Local configuration (copy from template)
