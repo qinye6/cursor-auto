@@ -12,8 +12,9 @@ class EmailVerificationHandler:
         """获取验证码"""
         try:
             username = email.split("@")[0]
+            domain = email.split("@")[1]  # 从邮箱地址中获取域名
             
-            if not self.email_api.create_email(username):
+            if not self.email_api.create_email(username, domain):
                 print(f"\n⚠️ 创建邮箱失败，尝试直接获取邮件...")
             
             max_attempts = 5

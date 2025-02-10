@@ -10,9 +10,14 @@ class EmailAPI:
         self.admin_password = admin_password or config.get('email.api.admin_password')
         self.jwt = None
         
-    def create_email(self, name, domain="qinye.asia"):
+    def create_email(self, name, domain=None):
         """创建新的邮箱地址"""
         try:
+            # 如果没有传入域名，从配置中获取
+            if domain is None:
+                config = Config()
+                domain = config.get('email.domain')
+            
             # 首先通过管理员API创建邮箱
             if self.admin_password:
                 admin_res = requests.post(

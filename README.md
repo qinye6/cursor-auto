@@ -172,7 +172,7 @@ cursor-auto/
 - `CURSOR_BROWSER_TYPE`
 
 ### 临时邮箱
-本项目使用了[[cloudflare_temp_email](https://github.com/dreamhunter2333/cloudflare_temp_email)]临时邮箱获取注册邮箱api<br>可以查看相关[[部署文档](https://temp-mail-docs.awsl.uk/zh/guide/github-action)]来部署到cloudfalare上使用
+本项目使用了[[cloudflare_temp_email](https://github.com/dreamhunter2333/cloudflare_temp_email)]临时邮箱获取注册邮箱api<br>可以查看相关[[部署文档](https://temp-mail-docs.awsl.uk/zh/guide/quick-start.html)]来部署到cloudfalare上使用
 
 ## 📝 日志系统
 
